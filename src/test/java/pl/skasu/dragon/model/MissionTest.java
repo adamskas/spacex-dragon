@@ -1,9 +1,16 @@
 package pl.skasu.dragon.model;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
+import org.junit.jupiter.api.Test;
+import pl.skasu.dragon.exception.MissionEndedException;
+import pl.skasu.dragon.exception.RocketAlreadyAssignedException;
 import pl.skasu.dragon.exception.RocketNotPartOfMissionException;
 
 class MissionTest {
@@ -57,7 +64,8 @@ class MissionTest {
     }
 
     @Test
-    void addRocket_shouldAssignRocketToMissionAndAddToList() {
+    void addRocket_shouldAssignRocketToMissionAndAddToList()
+        throws RocketAlreadyAssignedException, MissionEndedException {
         Mission mission = new Mission("Orbital Station");
         Rocket rocket = new Rocket("Station Builder");
         mission.addRocket(rocket);
@@ -74,15 +82,16 @@ class MissionTest {
     }
 
     @Test
-    void addRocket_shouldThrowIllegalStateExceptionForEndedMission() {
+    void addRocket_shouldThrowMissionEndedExceptionForEndedMission() {
         Mission mission = new Mission("Failed Mission");
         mission.setStatus(MissionStatus.ENDED);
         Rocket rocket = new Rocket("Rescue Rocket");
-        assertThrows(IllegalStateException.class, () -> mission.addRocket(rocket));
+        assertThrows(MissionEndedException.class, () -> mission.addRocket(rocket));
     }
 
     @Test
-    void removeRocket_shouldRemoveRocketFromMissionAndUpdateRocketStatus() {
+    void removeRocket_shouldRemoveRocketFromMissionAndUpdateRocketStatus()
+        throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
         Mission mission = new Mission("Rescue Mission");
         Rocket rocket = new Rocket("Rescue 1");
         mission.addRocket(rocket);
@@ -115,7 +124,8 @@ class MissionTest {
 
 
     @Test
-    void hasRocket_shouldReturnTrueForAssignedRocket() {
+    void hasRocket_shouldReturnTrueForAssignedRocket()
+        throws RocketAlreadyAssignedException, MissionEndedException {
         Mission mission = new Mission("Monitoring Mission");
         Rocket rocket = new Rocket("Probe");
         mission.addRocket(rocket);
@@ -130,19 +140,77 @@ class MissionTest {
     }
 
     @Test
-    void getNumberOfAssignedRockets_shouldReturnCorrectCount() {
+    void removeRocket_shouldSetStatusToScheduledWhenLastRocketRemoved()
+        throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
+        Mission mission = new Mission("Last Rocket Mission");
+        Rocket rocket = new Rocket("Last Rocket");
+
+        mission.addRocket(rocket);
+        assertEquals(MissionStatus.IN_PROGRESS, mission.getStatus());
+        assertEquals(1, mission.getNumberOfAssignedRockets());
+
+        mission.removeRocket(rocket);
+
+        assertEquals(MissionStatus.SCHEDULED, mission.getStatus());
+        assertEquals(0, mission.getNumberOfAssignedRockets());
+        assertNull(rocket.getAssignedMission());
+        assertEquals(RocketStatus.ON_GROUND, rocket.getStatus());
+    }
+
+    @Test
+    void removeRocket_shouldSetStatusToInProgressWhenOtherRocketsRemain()
+        throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
+        Mission mission = new Mission("Multi-Rocket Mission");
+        Rocket rocket1 = new Rocket("Rocket One");
+        Rocket rocket2 = new Rocket("Rocket Two");
+
+        mission.addRocket(rocket1);
+        mission.addRocket(rocket2);
+        assertEquals(2, mission.getNumberOfAssignedRockets());
+
+        mission.removeRocket(rocket1);
+
+        assertEquals(MissionStatus.IN_PROGRESS, mission.getStatus());
+        assertEquals(1, mission.getNumberOfAssignedRockets());
+        assertTrue(mission.hasRocket(rocket2));
+        assertFalse(mission.hasRocket(rocket1));
+    }
+
+    @Test
+    void removeRocket_shouldSetStatusToInProgressWhenOnlyInSpaceRocketRemains()
+        throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
+        Mission mission = new Mission("Mission");
+        Rocket rocket1 = new Rocket("Rocket1");
+        Rocket rocket2 = new Rocket("Rocket2");
+        rocket2.setStatus(RocketStatus.IN_REPAIR);
+
+        mission.addRocket(rocket1);
+        assertEquals(MissionStatus.IN_PROGRESS, mission.getStatus());
+        mission.addRocket(rocket2);
+        assertEquals(MissionStatus.PENDING, mission.getStatus());
+        assertEquals(2, mission.getNumberOfAssignedRockets());
+
+        mission.removeRocket(rocket2);
+        assertEquals(MissionStatus.IN_PROGRESS, mission.getStatus());
+        assertEquals(1, mission.getNumberOfAssignedRockets());
+        assertTrue(mission.hasRocket(rocket1));
+    }
+
+    @Test
+    void getNumberOfAssignedRockets_shouldReturnCorrectCount()
+        throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
         Mission mission = new Mission("Colonization");
         assertEquals(0, mission.getNumberOfAssignedRockets());
 
-        mission.addRocket(new Rocket("Colony Ship 1"));
+        Rocket rocket1 = new Rocket("Colony Ship 1");
+        mission.addRocket(rocket1);
         assertEquals(1, mission.getNumberOfAssignedRockets());
 
-        mission.addRocket(new Rocket("Colony Ship 2"));
+        Rocket rocket2 = new Rocket("Colony Ship 2");
+        mission.addRocket(rocket2);
         assertEquals(2, mission.getNumberOfAssignedRockets());
 
-        mission.removeRocket(new Rocket("Colony Ship 1")); // This will remove if equals is based on name
-        // The above line relies on the equals method of Rocket. If removeRocket relies on object identity, this test needs adjustment.
-        // Assuming Rocket's equals/hashCode are based on name, this should work.
+        mission.removeRocket(rocket1);
         assertEquals(1, mission.getNumberOfAssignedRockets());
     }
 
@@ -184,7 +252,8 @@ class MissionTest {
     }
 
     @Test
-    void toString_shouldReturnCorrectFormat() {
+    void toString_shouldReturnCorrectFormat()
+        throws RocketAlreadyAssignedException, MissionEndedException {
         Mission mission = new Mission("Solar Survey");
         assertEquals("Solar Survey - SCHEDULED - Dragons:0", mission.toString());
 

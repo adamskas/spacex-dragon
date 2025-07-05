@@ -1,6 +1,7 @@
 package pl.skasu.dragon.model;
 
 import org.junit.jupiter.api.Test;
+import pl.skasu.dragon.exception.RocketAlreadyAssignedException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -54,7 +55,8 @@ class RocketTest {
     }
 
     @Test
-    void assignToMission_shouldAssignMissionAndUpdateStatus() {
+    void assignToMission_shouldAssignMissionAndUpdateStatus()
+        throws RocketAlreadyAssignedException {
         Rocket rocket = new Rocket("Orion");
         Mission mission = new Mission("Mars Exploration");
         rocket.assignToMission(mission);
@@ -64,7 +66,7 @@ class RocketTest {
     }
 
     @Test
-    void assignToMission_shouldNotChangeStatusIfInRepair() {
+    void assignToMission_shouldNotChangeStatusIfInRepair() throws RocketAlreadyAssignedException {
         Rocket rocket = new Rocket("Repaired Rocket");
         Mission mission = new Mission("Repair Mission");
         rocket.setStatus(RocketStatus.IN_REPAIR);
@@ -74,13 +76,24 @@ class RocketTest {
     }
 
     @Test
+    void assignToMission_shouldThrowRocketAlreadyAssignedExceptionForAlreadyAssignedRocket()
+        throws RocketAlreadyAssignedException {
+        Rocket rocket = new Rocket("Test Rocket");
+        Mission mission1 = new Mission("Test Mission");
+        Mission mission2 = new Mission("Another Test Mission");
+        rocket.assignToMission(mission1);
+        assertTrue(rocket.isAssigned());
+        assertThrows(RocketAlreadyAssignedException.class, () -> rocket.assignToMission(mission2));
+    }
+
+    @Test
     void assignToMission_shouldThrowNullPointerExceptionForNullMission() {
         Rocket rocket = new Rocket("Test Rocket");
         assertThrows(NullPointerException.class, () -> rocket.assignToMission(null));
     }
 
     @Test
-    void isAssigned_shouldReturnTrueWhenAssigned() {
+    void isAssigned_shouldReturnTrueWhenAssigned() throws RocketAlreadyAssignedException {
         Rocket rocket = new Rocket("Assigned Rocket");
         Mission mission = new Mission("Test Mission");
         rocket.assignToMission(mission);
@@ -90,6 +103,17 @@ class RocketTest {
     @Test
     void isAssigned_shouldReturnFalseWhenNotAssigned() {
         Rocket rocket = new Rocket("Unassigned Rocket");
+        assertFalse(rocket.isAssigned());
+    }
+
+    @Test
+    void isAssigned_shouldReturnFalseWhenAfterRemovalFromMission()
+        throws RocketAlreadyAssignedException {
+        Rocket rocket = new Rocket("Removed Rocket");
+        Mission mission = new Mission("Test Mission");
+        rocket.assignToMission(mission);
+        assertTrue(rocket.isAssigned());
+        rocket.removeFromMission();
         assertFalse(rocket.isAssigned());
     }
 
@@ -137,5 +161,37 @@ class RocketTest {
 
         rocket.setStatus(RocketStatus.IN_SPACE);
         assertEquals("Explorer - IN_SPACE", rocket.toString());
+    }
+
+    @Test
+    void removeFromMission_shouldUpdateRocketStateCorrectly()
+        throws RocketAlreadyAssignedException {
+        Rocket rocket = new Rocket("Test Rocket");
+        Mission mission = new Mission("Test Mission");
+        
+        // Assign rocket to mission
+        rocket.assignToMission(mission);
+        assertEquals(mission, rocket.getAssignedMission());
+        assertEquals(RocketStatus.IN_SPACE, rocket.getStatus());
+        assertTrue(rocket.isAssigned());
+        
+        // Test removeFromMission behavior
+        rocket.removeFromMission();
+        assertNull(rocket.getAssignedMission());
+        assertEquals(RocketStatus.ON_GROUND, rocket.getStatus());
+        assertFalse(rocket.isAssigned());
+        
+        // Test with IN_REPAIR status
+        rocket = new Rocket("Repair Rocket");
+        mission = new Mission("Repair Mission");
+        rocket.setStatus(RocketStatus.IN_REPAIR);
+        rocket.assignToMission(mission);
+        assertEquals(RocketStatus.IN_REPAIR, rocket.getStatus());
+        
+        rocket.removeFromMission();
+        assertNull(rocket.getAssignedMission());
+        // Status should remain IN_REPAIR
+        assertEquals(RocketStatus.IN_REPAIR, rocket.getStatus());
+        assertFalse(rocket.isAssigned());
     }
 }

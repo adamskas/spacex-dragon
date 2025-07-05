@@ -1,6 +1,7 @@
 package pl.skasu.dragon.model;
 
 import java.util.Objects;
+import pl.skasu.dragon.exception.RocketAlreadyAssignedException;
 
 /**
  * Represents a rocket entity within the dragon mission control system. A rocket has a name, a
@@ -68,13 +69,20 @@ public class Rocket {
     }
 
     /**
-     * Assigns the rocket to a specified mission. If the rocket is not in {@code IN_REPAIR} status,
-     * its status will be updated to {@code IN_SPACE}.
+     * Assigns the given mission to the rocket. If the rocket is already assigned to a mission, a
+     * {@code RocketAlreadyAssignedException} is thrown. This method ensures that if the rocket's
+     * current status is not {@code IN_REPAIR}, then it updates the rocket's status to
+     * {@code IN_SPACE}.
      *
-     * @param mission The {@link Mission} to which the rocket is to be assigned. Must not be null.
-     * @throws NullPointerException if the provided mission is null.
+     * @param mission The mission to assign to the rocket. Must not be null.
+     * @throws RocketAlreadyAssignedException if the rocket is already assigned to another mission.
+     * @throws NullPointerException           if the provided mission is null.
      */
-    void assignToMission(Mission mission) {
+    void assignToMission(Mission mission) throws RocketAlreadyAssignedException {
+        if (this.assignedMission != null) {
+            throw new RocketAlreadyAssignedException(this.name, this.assignedMission.getName());
+        }
+
         this.assignedMission = Objects.requireNonNull(mission, "Mission cannot be null");
 
         if (this.status != RocketStatus.IN_REPAIR) {
@@ -95,7 +103,7 @@ public class Rocket {
     void removeFromMission() {
         this.assignedMission = null;
 
-        if(this.status == RocketStatus.IN_SPACE) {
+        if (this.status == RocketStatus.IN_SPACE) {
             this.status = RocketStatus.ON_GROUND;
         }
     }
@@ -114,8 +122,8 @@ public class Rocket {
      * is not null and is a {@code Rocket} object that has the same name as this object.
      *
      * @param o The object to compare with.
-     * @return {@code true} if the given object represents a {@code Mission} equivalent to this
-     * mission, {@code false} otherwise.
+     * @return {@code true} if the given object represents a {@code Rocket} equivalent to this
+     * rocket, {@code false} otherwise.
      */
     @Override
     public boolean equals(Object o) {
