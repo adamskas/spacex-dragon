@@ -255,12 +255,12 @@ class MissionTest {
     void toString_shouldReturnCorrectFormat()
         throws RocketAlreadyAssignedException, MissionEndedException {
         Mission mission = new Mission("Solar Survey");
-        assertEquals("Solar Survey - SCHEDULED - Dragons:0", mission.toString());
+        assertEquals("Solar Survey - SCHEDULED - Dragons: 0", mission.toString());
 
         mission.addRocket(new Rocket("Survey Probe 1"));
-        assertEquals("Solar Survey - SCHEDULED - Dragons:1", mission.toString());
+        assertEquals("Solar Survey - IN_PROGRESS - Dragons: 1", mission.toString());
 
-        mission.setStatus(MissionStatus.IN_PROGRESS);
-        assertEquals("Solar Survey - IN_PROGRESS - Dragons:1", mission.toString());
+        mission.setStatus(MissionStatus.ENDED);
+        assertEquals("Solar Survey - ENDED - Dragons: 1", mission.toString());
     }
 }

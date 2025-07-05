@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import pl.skasu.dragon.exception.InvalidMissionStatusException;
 import pl.skasu.dragon.exception.MissionEndedException;
 import pl.skasu.dragon.exception.RocketAlreadyAssignedException;
 import pl.skasu.dragon.exception.RocketNotPartOfMissionException;
@@ -54,13 +55,23 @@ public class Mission {
         return status;
     }
 
+    public void complete() throws InvalidMissionStatusException {
+        if(status != MissionStatus.IN_PROGRESS) {
+            throw new InvalidMissionStatusException(name, status.toString(), MissionStatus.IN_PROGRESS.toString());
+        }
+
+        status = MissionStatus.ENDED;
+        assignedRockets.forEach(Rocket::removeFromMission);
+        assignedRockets.clear();
+    }
+
     /**
      * Sets the status of this mission.
      *
      * @param status The new {@code MissionStatus} to set for the mission. Cannot be null.
      * @throws NullPointerException if the provided status is null.
      */
-    public void setStatus(MissionStatus status) {
+    void setStatus(MissionStatus status) {
         this.status = Objects.requireNonNull(status, "Mission status cannot be null");
     }
 
@@ -190,6 +201,6 @@ public class Mission {
      */
     @Override
     public String toString() {
-        return name + " - " + status + " - Dragons:" + assignedRockets.size();
+        return name + " - " + status + " - Dragons: " + assignedRockets.size();
     }
 }

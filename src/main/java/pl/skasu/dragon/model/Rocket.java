@@ -1,6 +1,7 @@
 package pl.skasu.dragon.model;
 
 import java.util.Objects;
+import pl.skasu.dragon.exception.InvalidRocketStatusException;
 import pl.skasu.dragon.exception.RocketAlreadyAssignedException;
 
 /**
@@ -48,13 +49,35 @@ public class Rocket {
         return status;
     }
 
+    public void putInRepair() {
+        this.status = RocketStatus.IN_REPAIR;
+
+        if(assignedMission != null) {
+            assignedMission.setStatus(MissionStatus.PENDING);
+        }
+    }
+
+    public void completeRepair() throws InvalidRocketStatusException {
+        if(status != RocketStatus.IN_REPAIR) {
+            throw new InvalidRocketStatusException(name, status.toString(), RocketStatus.IN_REPAIR.toString());
+        }
+
+        if(assignedMission != null) {
+            assignedMission.setStatus(MissionStatus.IN_PROGRESS);
+            this.status = RocketStatus.IN_SPACE;
+        } else {
+            this.status = RocketStatus.ON_GROUND;
+        }
+
+    }
+
     /**
      * Sets the status of the rocket.
      *
      * @param status The new {@link RocketStatus} for the rocket. Must not be null.
      * @throws NullPointerException if the provided status is null.
      */
-    public void setStatus(RocketStatus status) {
+    void setStatus(RocketStatus status) {
         this.status = Objects.requireNonNull(status, "Rocket status cannot be null");
     }
 
