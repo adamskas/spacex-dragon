@@ -10,3 +10,8 @@
    - _putRocketIntoRepair_ / _completeRepairOfRocket_
    - _endMission_
  3. Using the _module-info.java_ I have only allowed usage of SpaceXDragonRepository methods from this library
+
+# Usage of AI models
+- help with PR reviews using Gemini Code Assist
+- help with creating documentation
+- help with creating tests
