@@ -53,7 +53,7 @@ public class Rocket {
         this.status = RocketStatus.IN_REPAIR;
 
         if(assignedMission != null) {
-            assignedMission.setStatus(MissionStatus.PENDING);
+            assignedMission.reevaluateStatus();
         }
     }
 

@@ -284,15 +284,7 @@ class SpaceXDragonRepositoryTest {
 
         String summary = repository.getSummary();
 
-        String expectedSummary1 = """
-            - Mission B - IN_PROGRESS - Dragons: 2
-            \t- Rocket 3 - IN_SPACE
-            \t- Rocket 2 - IN_SPACE
-            - Mission A - IN_PROGRESS - Dragons: 1
-            \t- Rocket 1 - IN_SPACE
-            """;
-
-        String expectedSummary2 = """
+        String expectedSummary = """
             - Mission B - IN_PROGRESS - Dragons: 2
             \t- Rocket 2 - IN_SPACE
             \t- Rocket 3 - IN_SPACE
@@ -300,7 +292,7 @@ class SpaceXDragonRepositoryTest {
             \t- Rocket 1 - IN_SPACE
             """;
 
-        assertTrue(expectedSummary1.equals(summary) || expectedSummary2.equals(summary));
+        assertEquals(expectedSummary, summary);
     }
 
     @Test

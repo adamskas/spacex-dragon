@@ -199,7 +199,9 @@ public class SpaceXDragonRepository {
                 .thenComparing(Mission::getName, Comparator.reverseOrder()))
             .forEach(mission -> {
                 sb.append("- ").append(mission).append("\n");
-                mission.getAssignedRockets().forEach(r -> sb.append("\t- ").append(r).append("\n"));
+                mission.getAssignedRockets()
+                    .stream().sorted(Comparator.comparing(Rocket::getName))
+                    .forEach(r -> sb.append("\t- ").append(r).append("\n"));
             });
 
         return sb.toString();

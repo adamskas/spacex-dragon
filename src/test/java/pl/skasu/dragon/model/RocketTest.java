@@ -228,6 +228,7 @@ class RocketTest {
         assertFalse(rocket.isAssigned());
     }
 
+    @Test
     void removeFromMission_shouldNotUpdateRocketState_whenRocketIsInRepair()
         throws RocketAlreadyAssignedException {
         Rocket rocket = new Rocket("Test Rocket");
