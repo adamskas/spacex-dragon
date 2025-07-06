@@ -108,11 +108,25 @@ public class Mission {
         rocket.assignToMission(this);
         this.assignedRockets.add(rocket);
 
-        if (assignedRockets.stream().anyMatch(r -> r.getStatus() == RocketStatus.IN_REPAIR)) {
-            status = MissionStatus.PENDING;
-        } else {
-            status = MissionStatus.IN_PROGRESS;
+        reevaluateStatus();
+    }
+
+    public void reevaluateStatus() {
+        if(status == MissionStatus.ENDED) {
+            return;
         }
+
+        if(assignedRockets.isEmpty()) {
+            status = MissionStatus.SCHEDULED;
+            return;
+        }
+
+        if(assignedRockets.stream().anyMatch(r -> r.getStatus() == RocketStatus.IN_REPAIR)) {
+            status = MissionStatus.PENDING;
+            return;
+        }
+
+        status = MissionStatus.IN_PROGRESS;
     }
 
     /**
@@ -133,13 +147,7 @@ public class Mission {
         this.assignedRockets.remove(rocket);
         rocket.removeFromMission();
 
-        if (assignedRockets.stream().anyMatch(r -> r.equals(rocket))) {
-            status = MissionStatus.PENDING;
-        } else if (!assignedRockets.isEmpty()) {
-            status = MissionStatus.IN_PROGRESS;
-        } else {
-            status = MissionStatus.SCHEDULED;
-        }
+        reevaluateStatus();
     }
 
     /**

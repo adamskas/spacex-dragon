@@ -63,8 +63,8 @@ public class Rocket {
         }
 
         if(assignedMission != null) {
-            assignedMission.setStatus(MissionStatus.IN_PROGRESS);
             this.status = RocketStatus.IN_SPACE;
+            this.assignedMission.reevaluateStatus();
         } else {
             this.status = RocketStatus.ON_GROUND;
         }

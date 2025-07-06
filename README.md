@@ -7,6 +7,6 @@
     
    All other statuses of rockets and missions have clearly stated automatic transitions. 
    Taking this fact into consideration, in the SpaceXDragonRepository class I have created the following methods:
-   - _toggleRocketsInRepairStatus_
+   - _putRocketIntoRepair_ / _completeRepairOfRocket_
    - _endMission_
  3. Using the _module-info.java_ I have only allowed usage of SpaceXDragonRepository methods from this library

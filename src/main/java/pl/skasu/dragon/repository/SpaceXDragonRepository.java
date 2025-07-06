@@ -1,5 +1,6 @@
 package pl.skasu.dragon.repository;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -69,28 +70,6 @@ public class SpaceXDragonRepository {
     }
 
     /**
-     * Assigns a rocket to a mission based on their respective names. This method associates a
-     * specified rocket with a specified mission, provided that the rocket and mission exist, and
-     * the assignment does not conflict with the current state or configuration of the rocket or
-     * mission.
-     *
-     * @param rocketName  The name of the rocket to be assigned.
-     * @param missionName The name of the mission to which the rocket is assigned.
-     * @throws RocketNotFoundException        If no rocket with the specified name exists.
-     * @throws MissionNotFoundException       If no mission with the specified name exists.
-     * @throws RocketAlreadyAssignedException If the rocket is already assigned to a mission.
-     * @throws MissionEndedException          If the mission has already ended and modifications are
-     *                                        not allowed.
-     */
-    public void assignRocketToMission(String rocketName, String missionName)
-        throws RocketNotFoundException, MissionNotFoundException, RocketAlreadyAssignedException, MissionEndedException {
-        Rocket rocket = getRocket(rocketName);
-        Mission mission = getMission(missionName);
-
-        mission.addRocket(rocket);
-    }
-
-    /**
      * Puts the specified rocket into repair status. If the rocket is assigned to a mission, the
      * mission's status is updated to "PENDING."
      *
@@ -140,18 +119,18 @@ public class SpaceXDragonRepository {
      * the assignment does not conflict with the current state or configuration of the rocket or
      * mission.
      *
-     * @param missionName The name of the mission to which the rocket is assigned.
      * @param rocketName  The name of the rocket to be assigned.
-     * @throws MissionNotFoundException       If no mission with the specified name exists.
+     * @param missionName The name of the mission to which the rocket is assigned.
      * @throws RocketNotFoundException        If no rocket with the specified name exists.
+     * @throws MissionNotFoundException       If no mission with the specified name exists.
      * @throws RocketAlreadyAssignedException If the rocket is already assigned to a mission.
      * @throws MissionEndedException          If the mission has already ended and modifications are
      *                                        not allowed.
      */
-    public void assignRocketsToMission(String missionName, String rocketName)
-        throws MissionNotFoundException, RocketNotFoundException, RocketAlreadyAssignedException, MissionEndedException {
-        Mission mission = getMission(missionName);
+    public void assignRocketToMission(String rocketName, String missionName)
+        throws RocketNotFoundException, MissionNotFoundException, RocketAlreadyAssignedException, MissionEndedException {
         Rocket rocket = getRocket(rocketName);
+        Mission mission = getMission(missionName);
 
         mission.addRocket(rocket);
     }
@@ -173,25 +152,15 @@ public class SpaceXDragonRepository {
     /**
      * Generates a summary of all missions and rockets in the repository.
      * <p>
-     * The summary includes: - All missions and the rockets assigned to each mission. - All rockets
-     * currently on the ground that are not assigned to any mission.
+     * The summary includes: - All missions and the rockets assigned to each mission.
      *
-     * @return A string representation of the missions with their assigned rockets and the list of
-     * rockets on the ground.
+     * @return A string representation of the missions with their assigned rockets.
      */
     public String getSummary() {
         StringBuilder sb = new StringBuilder();
         missions.values().stream()
-            .sorted((m1, m2) -> {
-
-                int numberOfRocketsComparison = Integer.compare(m2.getNumberOfAssignedRockets(),
-                    m1.getNumberOfAssignedRockets());
-                if (numberOfRocketsComparison != 0) {
-                    return numberOfRocketsComparison;
-                }
-
-                return m2.getName().compareTo(m1.getName());
-            })
+            .sorted(Comparator.comparingInt(Mission::getNumberOfAssignedRockets).reversed()
+                .thenComparing(Mission::getName, Comparator.reverseOrder()))
             .forEach(mission -> {
                 sb.append("- ").append(mission).append("\n");
                 mission.getAssignedRockets().forEach(r -> sb.append("\t- ").append(r).append("\n"));

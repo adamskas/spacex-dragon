@@ -140,14 +140,6 @@ class SpaceXDragonRepositoryTest {
     }
 
     @Test
-    void assignRocketsToMission_shouldAssignRocket() throws Exception {
-        repository.addRocket("Falcon 9");
-        repository.addMission("Starlink-1");
-
-        assertDoesNotThrow(() -> repository.assignRocketsToMission("Starlink-1", "Falcon 9"));
-    }
-
-    @Test
     void endMission_shouldEndMission() throws Exception {
         repository.addMission("Starlink-1");
         repository.addRocket("Falcon 9");
