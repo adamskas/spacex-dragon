@@ -2,8 +2,12 @@ package pl.skasu.dragon.model;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import pl.skasu.dragon.exception.InvalidMissionStatusException;
+import pl.skasu.dragon.exception.MissionEndedException;
+import pl.skasu.dragon.exception.RocketAlreadyAssignedException;
 import pl.skasu.dragon.exception.RocketNotPartOfMissionException;
 
 /**
@@ -52,14 +56,53 @@ public class Mission {
         return status;
     }
 
+    public void complete() throws InvalidMissionStatusException {
+        if (status != MissionStatus.IN_PROGRESS) {
+            throw new InvalidMissionStatusException(name, status.toString(),
+                MissionStatus.IN_PROGRESS.toString());
+        }
+
+        status = MissionStatus.ENDED;
+        assignedRockets.forEach(Rocket::removeFromMission);
+        assignedRockets.clear();
+    }
+
     /**
      * Sets the status of this mission.
      *
      * @param status The new {@code MissionStatus} to set for the mission. Cannot be null.
      * @throws NullPointerException if the provided status is null.
      */
-    public void setStatus(MissionStatus status) {
+    void setStatus(MissionStatus status) {
         this.status = Objects.requireNonNull(status, "Mission status cannot be null");
+    }
+
+    /**
+     * Reevaluates and updates the mission's status based on the current state of assigned rockets.
+     * <p>
+     * The status transitions are determined as follows: - If the mission's current status is
+     * {@code MissionStatus.ENDED}, no changes are made. - If there are no rockets assigned to the
+     * mission, the status is set to {@code MissionStatus.SCHEDULED}. - If any assigned rocket is in
+     * the {@code RocketStatus.IN_REPAIR} state, the status is set to {@code MissionStatus.PENDING}.
+     * - If none of the above conditions apply (i.e., there are assigned rockets, and no rocket is
+     * in {@code RocketStatus.IN_REPAIR}), the status is set to {@code MissionStatus.IN_PROGRESS}.
+     */
+    public void reevaluateStatus() {
+        if (status == MissionStatus.ENDED) {
+            return;
+        }
+
+        if (assignedRockets.isEmpty()) {
+            status = MissionStatus.SCHEDULED;
+            return;
+        }
+
+        if (assignedRockets.stream().anyMatch(r -> r.getStatus() == RocketStatus.IN_REPAIR)) {
+            status = MissionStatus.PENDING;
+            return;
+        }
+
+        status = MissionStatus.IN_PROGRESS;
     }
 
     /**
@@ -73,44 +116,71 @@ public class Mission {
     }
 
     /**
-     * Assigns a rocket to this mission. A rocket cannot be assigned if the mission's status is
-     * {@code MissionStatus.ENDED}.
+     * Determines if the specified rocket can be assigned to this mission.
      *
-     * @param rocket The {@code Rocket} to be assigned. Cannot be null.
-     * @throws NullPointerException  if the provided rocket is null.
-     * @throws IllegalStateException if an attempt is made to assign a rocket to a mission that has
-     *                               ended.
+     * The method checks the following conditions:
+     * - Ensures that the provided rocket is not null.
+     * - Verifies that the mission has not already ended. If the mission's status is {@code MissionStatus.ENDED},
+     *   a {@code MissionEndedException} is thrown.
+     * - Delegates additional validation to the {@code canBeAssignedToMission} method of the provided rocket.
+     *
+     * @param rocket The {@code Rocket} to be checked for assignment. Must not be null.
+     * @throws NullPointerException if the provided rocket is null.
+     * @throws MissionEndedException if the mission has already ended and no further rockets can be assigned.
+     * @throws RocketAlreadyAssignedException if the rocket is already assigned to another mission.
      */
-    public void addRocket(Rocket rocket) {
+    public void canAssignRocket(Rocket rocket)
+        throws MissionEndedException, RocketAlreadyAssignedException {
         Objects.requireNonNull(rocket, "Rocket cannot be null");
 
         if (status == MissionStatus.ENDED) {
-            throw new IllegalStateException("Cannot assign rockets to an 'ENDED' mission.");
+            throw new MissionEndedException(name);
         }
 
-        rocket.assignToMission(this);
-
-        this.assignedRockets.add(rocket);
+        rocket.canBeAssignedToMission(this);
     }
 
     /**
-     * Removes a rocket from the mission. If the rocket is not part of the mission, an
-     * exception is thrown. Once removed, the rocket will no longer be associated with this
-     * mission.
+     * Adds and assigns the specified rocket to this mission. The rocket must not yet be assigned to
+     * another mission, and the mission must not be in a state marked as ended. If the rocket is in
+     * the {@code IN_REPAIR} status, the mission's status transitions to {@code PENDING} upon
+     * assignment.
+     *
+     * @param rocket The {@code Rocket} to be added to the mission. Must not be null.
+     * @throws NullPointerException           if the provided rocket is null.
+     * @throws RocketAlreadyAssignedException if the rocket is already assigned to another mission.
+     * @throws MissionEndedException          if the mission has already ended and no further
+     *                                        rockets can be assigned.
+     */
+    public void assignRocket(Rocket rocket)
+        throws RocketAlreadyAssignedException, MissionEndedException {
+        canAssignRocket(rocket);
+
+        rocket.assignToMission(this);
+        this.assignedRockets.add(rocket);
+
+        reevaluateStatus();
+    }
+
+    /**
+     * Removes a rocket from the mission. If the rocket is not part of the mission, an exception is
+     * thrown. Once removed, the rocket will no longer be associated with this mission.
      *
      * @param rocket The {@code Rocket} to be removed from the mission. Must not be null.
-     * @throws NullPointerException if the provided rocket is null.
-     * @throws RocketNotPartOfMissionException if the specified rocket is not currently
-     *         assigned to this mission.
+     * @throws NullPointerException            if the provided rocket is null.
+     * @throws RocketNotPartOfMissionException if the specified rocket is not currently assigned to
+     *                                         this mission.
      */
-    public void removeRocket(Rocket rocket) {
+    public void removeRocket(Rocket rocket) throws RocketNotPartOfMissionException {
         Objects.requireNonNull(rocket, "Rocket cannot be null");
-        if(!this.assignedRockets.contains(rocket)) {
+        if (!this.assignedRockets.contains(rocket)) {
             throw new RocketNotPartOfMissionException(rocket.getName(), name);
         }
 
         this.assignedRockets.remove(rocket);
         rocket.removeFromMission();
+
+        reevaluateStatus();
     }
 
     /**
@@ -172,6 +242,6 @@ public class Mission {
      */
     @Override
     public String toString() {
-        return name + " - " + status + " - Dragons:" + assignedRockets.size();
+        return name + " - " + status + " - Dragons: " + assignedRockets.size();
     }
 }
