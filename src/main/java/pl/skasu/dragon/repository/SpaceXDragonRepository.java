@@ -1,7 +1,9 @@
 package pl.skasu.dragon.repository;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import pl.skasu.dragon.exception.InvalidMissionStatusException;
@@ -13,6 +15,7 @@ import pl.skasu.dragon.exception.RocketAlreadyAssignedException;
 import pl.skasu.dragon.exception.RocketAlreadyExistsException;
 import pl.skasu.dragon.exception.RocketNotFoundException;
 import pl.skasu.dragon.model.Mission;
+import pl.skasu.dragon.model.MissionStatus;
 import pl.skasu.dragon.model.Rocket;
 
 /**
@@ -132,7 +135,40 @@ public class SpaceXDragonRepository {
         Rocket rocket = getRocket(rocketName);
         Mission mission = getMission(missionName);
 
-        mission.addRocket(rocket);
+        mission.assignRocket(rocket);
+    }
+
+    /**
+     * Assigns multiple rockets to a specified mission based on their respective names. This method
+     * associates all specified rockets with a specified mission, provided that the rockets and mission
+     * exist, and the assignment does not conflict with the current state or configuration of the rockets
+     * or mission.
+     *
+     * @param rocketNames  A list of rocket names to be assigned to the mission.
+     * @param missionName  The name of the mission to which the rockets are assigned.
+     * @throws RocketNotFoundException        If a rocket with any of the specified names does not exist.
+     * @throws MissionNotFoundException       If the specified mission does not exist.
+     * @throws RocketAlreadyAssignedException If any of the rockets is already assigned to another mission.
+     * @throws MissionEndedException          If the mission has already ended and modifications are not allowed.
+     */
+    public void assignRocketsToMission(List<String> rocketNames, String missionName)
+        throws RocketNotFoundException, MissionNotFoundException, RocketAlreadyAssignedException, MissionEndedException {
+        Mission mission = getMission(missionName);
+
+        if (mission.getStatus() == MissionStatus.ENDED) {
+            throw new MissionEndedException(mission.getName());
+        }
+
+        List<Rocket> rocketsToAssign = new ArrayList<>();
+        for (String rocketName : rocketNames) {
+            Rocket rocket = getRocket(rocketName);
+            rocketsToAssign.add(rocket);
+            mission.canAssignRocket(rocket);
+        }
+
+        for (Rocket rocket : rocketsToAssign) {
+            mission.assignRocket(rocket);
+        }
     }
 
     /**

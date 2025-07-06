@@ -92,7 +92,24 @@ public class Rocket {
     }
 
     /**
-     * Assigns the given mission to the rocket. If the rocket is already assigned to a mission, a
+     * Determines if the rocket can be assigned to the specified mission.
+     * If the rocket is already assigned to another mission and not to the specified one,
+     * this method throws a {@code RocketAlreadyAssignedException}.
+     *
+     * @param mission The mission to check against. Must not be null.
+     * @throws NullPointerException if the provided mission is null.
+     * @throws RocketAlreadyAssignedException if the rocket is already assigned to a different mission.
+     */
+    public void canBeAssignedToMission(Mission mission) throws RocketAlreadyAssignedException {
+        Objects.requireNonNull(mission, "Mission cannot be null");
+
+        if (isAssigned() && !isAssigned(mission)) {
+            throw new RocketAlreadyAssignedException(this.name, this.assignedMission.getName());
+        }
+    }
+
+    /**
+     * Assigns the given mission to the rocket. If the rocket is already assigned to another mission, a
      * {@code RocketAlreadyAssignedException} is thrown. This method ensures that if the rocket's
      * current status is not {@code IN_REPAIR}, then it updates the rocket's status to
      * {@code IN_SPACE}.
@@ -102,11 +119,9 @@ public class Rocket {
      * @throws NullPointerException           if the provided mission is null.
      */
     void assignToMission(Mission mission) throws RocketAlreadyAssignedException {
-        if (this.assignedMission != null) {
-            throw new RocketAlreadyAssignedException(this.name, this.assignedMission.getName());
-        }
+        canBeAssignedToMission(mission);
 
-        this.assignedMission = Objects.requireNonNull(mission, "Mission cannot be null");
+        this.assignedMission = mission;
 
         if (this.status != RocketStatus.IN_REPAIR) {
             this.status = RocketStatus.IN_SPACE;
@@ -138,6 +153,17 @@ public class Rocket {
      */
     public boolean isAssigned() {
         return assignedMission != null;
+    }
+
+    /**
+     * Checks if the rocket is currently assigned to the specified mission.
+     *
+     * @param mission The mission to check against the rocket's currently assigned mission. Must not be null.
+     * @return {@code true} if the rocket is assigned to the specified mission and not assigned to a different mission;
+     *         {@code false} otherwise.
+     */
+    public boolean isAssigned(Mission mission) {
+        return isAssigned() && assignedMission.equals(mission);
     }
 
     /**

@@ -5,12 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import pl.skasu.dragon.exception.InvalidMissionStatusException;
 import pl.skasu.dragon.exception.InvalidRocketStatusException;
 import pl.skasu.dragon.exception.MissionAlreadyExistsException;
+import pl.skasu.dragon.exception.MissionEndedException;
 import pl.skasu.dragon.exception.MissionNotFoundException;
+import pl.skasu.dragon.exception.RocketAlreadyAssignedException;
 import pl.skasu.dragon.exception.RocketAlreadyExistsException;
 import pl.skasu.dragon.exception.RocketNotFoundException;
 
@@ -74,6 +77,87 @@ class SpaceXDragonRepositoryTest {
 
         assertEquals("Mission 'Starlink-1' not found.", exception.getMessage());
     }
+
+    @Test
+    void shouldAssignRocketsToMission()
+        throws RocketAlreadyExistsException, MissionAlreadyExistsException, RocketNotFoundException, MissionNotFoundException, RocketAlreadyAssignedException, MissionEndedException {
+        String missionName = "Starlink-1";
+        repository.addMission(missionName);
+
+        String rocketName1 = "Falcon 9";
+        String rocketName2 = "Falcon Heavy";
+        repository.addRocket(rocketName1);
+        repository.addRocket(rocketName2);
+
+        assertDoesNotThrow(
+            () -> repository.assignRocketsToMission(List.of(rocketName1, rocketName2),
+                missionName));
+    }
+
+    @Test
+    void assignRocketsToMission_shouldThrowMissionNotFoundException() {
+        assertThrows(MissionNotFoundException.class, () -> {
+            repository.assignRocketsToMission(List.of("Falcon 9"), "Non-existent Mission");
+        });
+    }
+
+    @Test
+    void assignRocketsToMission_shouldThrowRocketNotFoundException()
+        throws MissionAlreadyExistsException {
+        String missionName = "Starlink-1";
+        repository.addMission(missionName);
+
+        assertThrows(RocketNotFoundException.class, () -> {
+            repository.assignRocketsToMission(List.of("Non-existent Rocket"), missionName);
+        });
+    }
+
+    @Test
+    void assignRocketsToMission_shouldThrowMissionEndedException()
+        throws MissionAlreadyExistsException, RocketAlreadyExistsException, MissionNotFoundException, RocketAlreadyAssignedException, MissionEndedException, InvalidMissionStatusException, RocketNotFoundException {
+        String missionName = "Starlink-1";
+        repository.addMission(missionName);
+
+        String rocketName = "Falcon 9";
+        repository.addRocket(rocketName);
+
+        repository.assignRocketToMission(rocketName, missionName);
+        repository.endMission(missionName);
+
+        assertThrows(MissionEndedException.class, () -> {
+            repository.assignRocketsToMission(List.of(rocketName), missionName);
+        });
+    }
+
+    @Test
+    void assignRocketsToMission_shouldThrowRocketAlreadyAssignedException()
+        throws MissionAlreadyExistsException, RocketAlreadyExistsException, MissionNotFoundException, RocketAlreadyAssignedException, MissionEndedException, RocketNotFoundException {
+        String missionName1 = "Starlink-1";
+        String missionName2 = "Starlink-2";
+        repository.addMission(missionName1);
+        repository.addMission(missionName2);
+
+        String rocketName = "Falcon 9";
+        repository.addRocket(rocketName);
+
+        repository.assignRocketToMission(rocketName, missionName1);
+
+        assertThrows(RocketAlreadyAssignedException.class, () -> {
+            repository.assignRocketsToMission(List.of(rocketName), missionName2);
+        });
+    }
+
+    @Test
+    void assignRocketsToMission_shouldNotThrowExceptionForEmptyRocketList()
+        throws MissionAlreadyExistsException {
+        String missionName = "Starlink-1";
+        repository.addMission(missionName);
+
+        assertDoesNotThrow(() -> {
+            repository.assignRocketsToMission(List.of(), missionName);
+        });
+    }
+
 
     @Test
     void putRocketIntoRepair_shouldPutRocketInRepair() throws Exception {
@@ -161,11 +245,13 @@ class SpaceXDragonRepositoryTest {
     void endMission_shouldThrowException_whenMissionHasNotYetStarted() throws Exception {
         repository.addMission("Starlink-1");
 
-        InvalidMissionStatusException exception = assertThrows(InvalidMissionStatusException.class, () -> {
-            repository.endMission("Starlink-1");
-        });
+        InvalidMissionStatusException exception = assertThrows(InvalidMissionStatusException.class,
+            () -> {
+                repository.endMission("Starlink-1");
+            });
 
-        assertEquals("Mission 'Starlink-1' has status 'SCHEDULED', but 'IN_PROGRESS' was expected.", exception.getMessage());
+        assertEquals("Mission 'Starlink-1' has status 'SCHEDULED', but 'IN_PROGRESS' was expected.",
+            exception.getMessage());
     }
 
     @Test
@@ -175,11 +261,13 @@ class SpaceXDragonRepositoryTest {
         repository.assignRocketToMission("Falcon 9", "Starlink-1");
         repository.endMission("Starlink-1");
 
-        InvalidMissionStatusException exception = assertThrows(InvalidMissionStatusException.class, () -> {
-            repository.endMission("Starlink-1");
-        });
+        InvalidMissionStatusException exception = assertThrows(InvalidMissionStatusException.class,
+            () -> {
+                repository.endMission("Starlink-1");
+            });
 
-        assertEquals("Mission 'Starlink-1' has status 'ENDED', but 'IN_PROGRESS' was expected.", exception.getMessage());
+        assertEquals("Mission 'Starlink-1' has status 'ENDED', but 'IN_PROGRESS' was expected.",
+            exception.getMessage());
     }
 
     @Test

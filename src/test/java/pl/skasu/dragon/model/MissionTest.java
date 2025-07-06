@@ -1,5 +1,6 @@
 package pl.skasu.dragon.model;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -24,7 +25,7 @@ class MissionTest {
     }
 
     @Test
-    void constructor_shouldThrowNullPointerExceptionForNullName() {
+    void constructor_shouldThrowNullPointerException_forNullName() {
         assertThrows(NullPointerException.class, () -> new Mission(null));
     }
 
@@ -50,10 +51,53 @@ class MissionTest {
     }
 
     @Test
-    void setStatus_shouldThrowNullPointerExceptionForNullStatus() {
+    void setStatus_shouldThrowNullPointerException_forNullStatus() {
         Mission mission = new Mission("Venus Descent");
         assertThrows(NullPointerException.class, () -> mission.setStatus(null));
     }
+
+    @Test
+    void reevaluateStatus_shouldNotChangeStatus_whenMissionIsEnded() {
+        Mission mission = new Mission("Endurance");
+        mission.setStatus(MissionStatus.ENDED);
+
+        mission.reevaluateStatus();
+
+        assertEquals(MissionStatus.ENDED, mission.getStatus());
+    }
+
+    @Test
+    void reevaluateStatus_shouldSetStatusToScheduled_whenNoRocketsAssigned() {
+        Mission mission = new Mission("Discovery");
+        mission.setStatus(MissionStatus.IN_PROGRESS);
+
+        mission.reevaluateStatus();
+
+        assertEquals(MissionStatus.SCHEDULED, mission.getStatus());
+    }
+
+    @Test
+    void reevaluateStatus_shouldSetStatusToPending_whenRocketIsInRepair() throws RocketAlreadyAssignedException, MissionEndedException {
+        Mission mission = new Mission("Odyssey");
+        Rocket rocket = new Rocket("Ares");
+        rocket.setStatus(RocketStatus.IN_REPAIR);
+
+        mission.assignRocket(rocket);
+
+        assertEquals(MissionStatus.PENDING, mission.getStatus());
+    }
+
+    @Test
+    void reevaluateStatus_shouldSetStatusToInProgress_whenRocketsAreReady() throws RocketAlreadyAssignedException, MissionEndedException {
+        Mission mission = new Mission("Voyager");
+        Rocket rocket = new Rocket("Titan IIIE");
+
+        mission.assignRocket(rocket);
+
+        assertEquals(MissionStatus.IN_PROGRESS, mission.getStatus());
+        assertEquals(RocketStatus.IN_SPACE, rocket.getStatus());
+    }
+
 
     @Test
     void getAssignedRockets_shouldReturnUnmodifiableSet() {
@@ -64,11 +108,52 @@ class MissionTest {
     }
 
     @Test
-    void addRocket_shouldAssignRocketToMissionAndAddToList()
+    void canAssignRocket_shouldThrowNPE_whenRocketIsNull() {
+        Mission mission = new Mission("Test Mission");
+        assertThrows(NullPointerException.class, () -> mission.canAssignRocket(null));
+    }
+
+    @Test
+    void canAssignRocket_shouldThrowMissionEndedException_whenMissionIsEnded() {
+        Mission mission = new Mission("Test Mission");
+        mission.setStatus(MissionStatus.ENDED);
+        Rocket rocket = new Rocket("Test Rocket");
+        assertThrows(MissionEndedException.class, () -> mission.canAssignRocket(rocket));
+    }
+
+    @Test
+    void canAssignRocket_shouldNotThrow_whenRocketIsUnassignedAndMissionIsActive() {
+        Mission mission = new Mission("Test Mission");
+        mission.setStatus(MissionStatus.SCHEDULED);
+        Rocket rocket = new Rocket("Test Rocket");
+        assertDoesNotThrow(() -> mission.canAssignRocket(rocket));
+    }
+
+    @Test
+    void canAssignRocket_shouldNotThrow_whenRocketIsAssignedToTheSameMission() throws RocketAlreadyAssignedException, MissionEndedException {
+        Mission mission = new Mission("Test Mission");
+        Rocket rocket = new Rocket("Test Rocket");
+        mission.assignRocket(rocket);
+        assertDoesNotThrow(() -> mission.canAssignRocket(rocket));
+    }
+
+    @Test
+    void canAssignRocket_shouldThrowRocketAlreadyAssignedException_whenRocketAssignedToDifferentMission() throws RocketAlreadyAssignedException, MissionEndedException {
+        Mission mission1 = new Mission("Mission 1");
+        Mission mission2 = new Mission("Mission 2");
+        Rocket rocket = new Rocket("Test Rocket");
+        mission1.assignRocket(rocket);
+
+        assertThrows(RocketAlreadyAssignedException.class, () -> mission2.canAssignRocket(rocket));
+    }
+
+
+    @Test
+    void assignRocket_shouldAssignRocketToMissionAndAssignToList()
         throws RocketAlreadyAssignedException, MissionEndedException {
         Mission mission = new Mission("Orbital Station");
         Rocket rocket = new Rocket("Station Builder");
-        mission.addRocket(rocket);
+        mission.assignRocket(rocket);
         assertTrue(mission.hasRocket(rocket));
         assertEquals(1, mission.getNumberOfAssignedRockets());
         assertEquals(mission, rocket.getAssignedMission());
@@ -76,17 +161,17 @@ class MissionTest {
     }
 
     @Test
-    void addRocket_shouldThrowNullPointerExceptionForNullRocket() {
+    void assignRocket_shouldThrowNullPointerException_whenNullRocketIsProvided() {
         Mission mission = new Mission("Null Rocket Mission");
-        assertThrows(NullPointerException.class, () -> mission.addRocket(null));
+        assertThrows(NullPointerException.class, () -> mission.assignRocket(null));
     }
 
     @Test
-    void addRocket_shouldThrowMissionEndedExceptionForEndedMission() {
+    void assignRocket_shouldThrowMissionEndedException_whenMissionAlreadyEnded() {
         Mission mission = new Mission("Failed Mission");
         mission.setStatus(MissionStatus.ENDED);
         Rocket rocket = new Rocket("Rescue Rocket");
-        assertThrows(MissionEndedException.class, () -> mission.addRocket(rocket));
+        assertThrows(MissionEndedException.class, () -> mission.assignRocket(rocket));
     }
 
     @Test
@@ -94,7 +179,7 @@ class MissionTest {
         throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
         Mission mission = new Mission("Rescue Mission");
         Rocket rocket = new Rocket("Rescue 1");
-        mission.addRocket(rocket);
+        mission.assignRocket(rocket);
 
         assertTrue(mission.hasRocket(rocket));
         assertEquals(1, mission.getNumberOfAssignedRockets());
@@ -110,13 +195,13 @@ class MissionTest {
     }
 
     @Test
-    void removeRocket_shouldThrowNullPointerExceptionForNullRocket() {
+    void removeRocket_shouldThrowNullPointerException_whenNullRocketIsProvided() {
         Mission mission = new Mission("Empty Mission");
         assertThrows(NullPointerException.class, () -> mission.removeRocket(null));
     }
 
     @Test
-    void removeRocket_shouldThrowRocketNotPartOfMissionExceptionForUnassignedRocket() {
+    void removeRocket_shouldThrowRocketNotPartOfMissionException_whenRocketIsUnassigned() {
         Mission mission = new Mission("Exploration Mission");
         Rocket rocket = new Rocket("Explorer");
         assertThrows(RocketNotPartOfMissionException.class, () -> mission.removeRocket(rocket));
@@ -124,28 +209,28 @@ class MissionTest {
 
 
     @Test
-    void hasRocket_shouldReturnTrueForAssignedRocket()
+    void hasRocket_shouldReturnTrue_forAssignedRocket()
         throws RocketAlreadyAssignedException, MissionEndedException {
         Mission mission = new Mission("Monitoring Mission");
         Rocket rocket = new Rocket("Probe");
-        mission.addRocket(rocket);
+        mission.assignRocket(rocket);
         assertTrue(mission.hasRocket(rocket));
     }
 
     @Test
-    void hasRocket_shouldReturnFalseForNonAssignedRocket() {
+    void hasRocket_shouldReturnFalse_forNonAssignedRocket() {
         Mission mission = new Mission("Recon Mission");
         Rocket rocket = new Rocket("Scout");
         assertFalse(mission.hasRocket(rocket));
     }
 
     @Test
-    void removeRocket_shouldSetStatusToScheduledWhenLastRocketRemoved()
+    void removeRocket_shouldSetStatusToScheduled_whenLastRocketRemoved()
         throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
         Mission mission = new Mission("Last Rocket Mission");
         Rocket rocket = new Rocket("Last Rocket");
 
-        mission.addRocket(rocket);
+        mission.assignRocket(rocket);
         assertEquals(MissionStatus.IN_PROGRESS, mission.getStatus());
         assertEquals(1, mission.getNumberOfAssignedRockets());
 
@@ -158,14 +243,14 @@ class MissionTest {
     }
 
     @Test
-    void removeRocket_shouldSetStatusToInProgressWhenOtherRocketsRemain()
+    void removeRocket_shouldSetStatusToInProgress_whenOtherRocketsRemain()
         throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
         Mission mission = new Mission("Multi-Rocket Mission");
         Rocket rocket1 = new Rocket("Rocket One");
         Rocket rocket2 = new Rocket("Rocket Two");
 
-        mission.addRocket(rocket1);
-        mission.addRocket(rocket2);
+        mission.assignRocket(rocket1);
+        mission.assignRocket(rocket2);
         assertEquals(2, mission.getNumberOfAssignedRockets());
 
         mission.removeRocket(rocket1);
@@ -177,16 +262,16 @@ class MissionTest {
     }
 
     @Test
-    void removeRocket_shouldSetStatusToInProgressWhenOnlyInSpaceRocketRemains()
+    void removeRocket_shouldSetStatusToInProgress_whenOnlyInSpaceRocketRemains()
         throws RocketAlreadyAssignedException, MissionEndedException, RocketNotPartOfMissionException {
         Mission mission = new Mission("Mission");
         Rocket rocket1 = new Rocket("Rocket1");
         Rocket rocket2 = new Rocket("Rocket2");
         rocket2.setStatus(RocketStatus.IN_REPAIR);
 
-        mission.addRocket(rocket1);
+        mission.assignRocket(rocket1);
         assertEquals(MissionStatus.IN_PROGRESS, mission.getStatus());
-        mission.addRocket(rocket2);
+        mission.assignRocket(rocket2);
         assertEquals(MissionStatus.PENDING, mission.getStatus());
         assertEquals(2, mission.getNumberOfAssignedRockets());
 
@@ -203,11 +288,11 @@ class MissionTest {
         assertEquals(0, mission.getNumberOfAssignedRockets());
 
         Rocket rocket1 = new Rocket("Colony Ship 1");
-        mission.addRocket(rocket1);
+        mission.assignRocket(rocket1);
         assertEquals(1, mission.getNumberOfAssignedRockets());
 
         Rocket rocket2 = new Rocket("Colony Ship 2");
-        mission.addRocket(rocket2);
+        mission.assignRocket(rocket2);
         assertEquals(2, mission.getNumberOfAssignedRockets());
 
         mission.removeRocket(rocket1);
@@ -215,27 +300,27 @@ class MissionTest {
     }
 
     @Test
-    void equals_shouldReturnTrueForSameName() {
+    void equals_shouldReturnTrue_forSameName() {
         Mission mission1 = new Mission("Mission Alpha");
         Mission mission2 = new Mission("Mission Alpha");
         assertEquals(mission1, mission2);
     }
 
     @Test
-    void equals_shouldReturnFalseForDifferentName() {
+    void equals_shouldReturnFalse_forDifferentName() {
         Mission mission1 = new Mission("Mission Alpha");
         Mission mission2 = new Mission("Mission Beta");
         assertNotEquals(mission1, mission2);
     }
 
     @Test
-    void equals_shouldReturnFalseForNull() {
+    void equals_shouldReturnFalse_forNull() {
         Mission mission = new Mission("Mission Gamma");
         assertNotEquals(null, mission);
     }
 
     @Test
-    void equals_shouldReturnFalseForDifferentClass() {
+    void equals_shouldReturnFalse_forDifferentClass() {
         Mission mission = new Mission("Mission Delta");
         Object obj = new Object();
         assertNotEquals(mission, obj);
@@ -257,7 +342,7 @@ class MissionTest {
         Mission mission = new Mission("Solar Survey");
         assertEquals("Solar Survey - SCHEDULED - Dragons: 0", mission.toString());
 
-        mission.addRocket(new Rocket("Survey Probe 1"));
+        mission.assignRocket(new Rocket("Survey Probe 1"));
         assertEquals("Solar Survey - IN_PROGRESS - Dragons: 1", mission.toString());
 
         mission.setStatus(MissionStatus.ENDED);
